@@ -6,22 +6,13 @@
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
-	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="a4546f3a-bea3-40d8-8c73-9d427ca4cd44" >
-		<http:listener-connection host="0.0.0.0" port="${http.port}" />
-	</http:listener-config>
-	<http:request-config name="Accounts_HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="e15e9b67-aa47-4150-a656-1f92105922e4" >
-		<http:request-connection host="${accounts.host}" port="${accounts.port}" />
-	</http:request-config>
-	<vm:config name="VM_Config" doc:name="VM Config" doc:id="f60b3336-7725-4558-ba85-d5e8ff8307f9" >
-		<vm:queues >
-			<vm:queue queueName="VM_queue" />
-		</vm:queues>
-	</vm:config>
-	<configuration-properties doc:name="Configuration properties" doc:id="5bd6ccff-3188-43f2-b70e-9d2f7c7d0dda" file="config.yaml" />
-	<flow name="logger-var-ref" doc:id="a380318d-0ce5-48d1-b406-0fd119caa4f9">
-		<logger level="INFO" doc:name="First Mule Message" doc:id="c3b73a68-9fbd-4a88-a054-1ad924dc3055" />
-		<set-variable value="#[attributes.headers.csr_user_id]" doc:name="userId" doc:id="d7b726a7-fffe-49ee-a270-b6a5b00121fb" variableName="userId" />
-	</flow>
+	<sub-flow name="log-at-exit" doc:id="a3e3806c-77d3-42b8-a324-a0c264480cd3" >
+		<logger level="INFO" doc:name="Last Mule Message" doc:id="f563ac7f-f5ae-404f-9046-bded35359da7" />
+	</sub-flow>
+	<sub-flow name="log-set-user-id" doc:id="361daaed-246d-4201-a445-e3ef9ac98b83" >
+		<logger level="INFO" doc:name="First Mule Message" doc:id="736a8603-0a3e-413d-b57e-92c63198f784" />
+		<set-variable value="#[message.attributes.headers.csr_user_id]" doc:name="userId" doc:id="5839cc95-a471-4aca-8ff3-3ae5c192a68b" variableName="userId" />
+	</sub-flow>
 	<flow name="get-accounts-by-name" doc:id="93a0cf08-e882-465c-a067-d2ba2a2ddd3e" >
 		<http:listener doc:name="GET /accounts-by-name" doc:id="c93d60c1-f539-4c9d-8952-082067610093" config-ref="HTTP_Listener_config" path="/accounts-by-name" allowedMethods="GET">
 			<http:response >
@@ -32,19 +23,19 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 }]]]></http:headers>
 			</http:response>
 		</http:listener>
-		<flow-ref doc:name="logger-var-ref" doc:id="f2bdc63b-6cb6-440c-8e1e-7e626f3e93f0" name="logger-var-ref"/>
+		<flow-ref doc:name="log-set-user-id" doc:id="1340bcd8-75bf-4634-80d8-af0b60881d82" name="log-set-user-id" />
 		<set-variable value="#[attributes.queryParams.cname]" doc:name="accountName" doc:id="00185fa3-84b0-427f-95be-4851925ed2b0" variableName="accountName"/>
 		<http:request method="GET" doc:name="GET accounts by name" doc:id="bd4bc733-c0c0-49ac-b18f-02766ff107e2" config-ref="Accounts_HTTP_Request_configuration" path="/accounts">
 			<http:headers ><![CDATA[#[{
 	user_id : vars.userId,
-	client_id:("accounts.client_id"),
-	client_secret:("accounts.client_secret")
+	client_id: Mule::p("accounts.client_id"),
+	client_secret: Mule::p("accounts.client_secret")
 }]]]></http:headers>
 			<http:query-params ><![CDATA[#[{
 	account_name: vars.accountName
 }]]]></http:query-params>
 		</http:request>
-		<logger level="INFO" doc:name="Last Mule Message" doc:id="f563ac7f-f5ae-404f-9046-bded35359da7" />
+		<flow-ref doc:name="log-at-exit" doc:id="bd13f1f4-14f8-4c88-bc54-17d1f3406fca" name="log-at-exit" />
 	</flow>
 	<flow name="get-accounts-by-type" doc:id="3aac5ba3-c77f-4370-b943-cf1a7b88d09c" >
 		<http:listener doc:name="GET /accounts-by-type" doc:id="ef15cd80-d288-4e40-b986-cbb1c353e24c" config-ref="HTTP_Listener_config" path="/accounts-by-type" allowedMethods="GET" >
@@ -56,25 +47,32 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 }]]]></http:headers>
 			</http:response>
 		</http:listener>
-		<flow-ref doc:name="logger-var-ref" doc:id="00e49a1c-db03-4eaf-80bc-c999a4a84f42" name="logger-var-ref"/>
+		<flow-ref doc:name="log-set-user-id" doc:id="c1c11e8a-34e7-452d-8f4c-184d8a63693e" name="log-set-user-id" />
 		<set-variable value='#[attributes.queryParams.ctype default "business"]' doc:name="accountType" doc:id="4546a542-018c-4693-88ca-cfebc7cc885d" variableName="accountType" />
 		<http:request method="GET" doc:name="GET accounts by type" doc:id="8dd3b009-3616-4c79-a947-43c286933096" config-ref="Accounts_HTTP_Request_configuration" path="/accounts" >
 			<http:headers ><![CDATA[#[{
 	user_id : vars.userId,
-	client_id: ("accounts.client_id"),
-	client_secret: ("accounts.client_secret")
+	client_id: Mule::p("accounts.client_id"),
+	client_secret: Mule::p("accounts.client_secret")
 }]]]></http:headers>
 			<http:query-params ><![CDATA[#[{
 	account_type: vars.accountType
 }]]]></http:query-params>
 		</http:request>
-		<logger level="INFO" doc:name="Last Mule Message" doc:id="28c7dc1f-c3ad-4750-9e18-ed9b795cf9a2" />
+		<flow-ref doc:name="log-at-exit" doc:id="de46373a-e00e-4d4c-afa8-809b4539ba49" name="log-at-exit" />
 	</flow>
-	<flow name="post-accounts" doc:id="03b713cf-c806-4670-8167-b057612cfe76" >
-		<http:listener doc:name="Listener" doc:id="10cea0fb-ab11-476b-ac2b-d7c1b3fef401" config-ref="HTTP_Listener_config" path="/post-accounts"/>
-		<flow-ref doc:name="logger-var-ref" doc:id="e2b11825-99fd-4ab5-b405-f55b32e878bd" name="logger-var-ref"/>
-		<set-variable value="#[sizeOf(payload)]" doc:name="accounts" doc:id="8d9017ad-34c6-4ec3-9453-bfc7f8305b7b" variableName="accounts"/>
-		<vm:publish doc:name="queue" doc:id="b825db2b-4641-4407-b49d-0fb09d7530a4" config-ref="VM_Config" queueName="VM_queue">
+	<flow name="post-accounts" doc:id="41d42109-e572-47c6-88cd-35eb786503c1" >
+		<http:listener doc:name="POST /accounts" doc:id="95baa9bb-870e-4107-8333-f76437575748" config-ref="HTTP_Listener_config" path="/accounts" allowedMethods="POST">
+			<http:response >
+				<http:headers ><![CDATA[#[{
+	number_of_accounts: vars.accountsNumber,
+	csr_user_id: vars.userId
+}]]]></http:headers>
+			</http:response>
+		</http:listener>
+		<flow-ref doc:name="log-set-user-id" doc:id="a9b50248-5c13-4fad-b3df-f7398efe6c4b" name="log-set-user-id" />
+		<set-variable value="#[sizeOf(payload)]" doc:name="accountsNumber" doc:id="4fb26af1-42ec-4133-907c-ec3b293074c0" variableName="accountsNumber"/>
+		<vm:publish doc:id="77459481-c033-4076-8033-ad41a437af6e" doc:name="csr_input_queue" config-ref="CSR_VM_Config" queueName="${vm.queue}">
 			<vm:content ><![CDATA[#[output application/json
 ---
 {
@@ -82,24 +80,29 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 	accounts: payload
 }]]]></vm:content>
 		</vm:publish>
-		<ee:transform doc:name="Transform Message" doc:id="98e5c983-00ec-49a7-b443-af493607918a" >
+		<ee:transform doc:name="Transform Message" doc:id="f4ca3657-6ba0-4dd3-bd70-76630627b5a6" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
-output application/java
+output application/json
 ---
 {
-	"message": "Accounts submitted"
+	message: "Accounts submitted"
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<logger level="INFO" doc:name="Logger" doc:id="2c936560-fc83-4104-a2c8-a2c3072c5607" />
+		<flow-ref doc:name="log-at-exit" doc:id="dcf2880e-5e0f-4808-b6f4-5ab528ce55eb" name="log-at-exit" />
 	</flow>
-	<flow name="csr-accountsFlow" doc:id="80424c92-0445-41ec-b09f-c4fdd1aa3cf9" >
-		<vm:listener doc:name="queue" doc:id="7d0e259e-13bf-4089-991c-667c3df03457" config-ref="VM_Config" queueName="VM_queue"/>
-		<flow-ref doc:name="log-userid" doc:id="2e68905c-03bf-47e1-8669-577793943466" name="logger-var-ref"/>
-		<http:request method="GET" doc:name="POST accounts" doc:id="4e11e348-9e1c-4316-b528-171e4a78145a" config-ref="Accounts_HTTP_Request_configuration" path="/post-accounts">
+	<flow name="read-csr-input-queue" doc:id="0f5819d7-4128-4ba0-a2b8-b8113ef21e1f" >
+		<vm:listener queueName="${vm.queue}" doc:name="csr-input-queue" doc:id="deb4e272-f805-48b7-a0d0-a0a7682ef897" config-ref="CSR_VM_Config"/>
+		<logger level="INFO" doc:name="First Mule Message" doc:id="6acee795-d8c9-41eb-a19e-6dc9f5992d0c" />
+		<http:request method="POST" doc:name="POST accounts" doc:id="a7cab2e3-fb55-4a1c-9d10-c429028ea33d" config-ref="Accounts_HTTP_Request_configuration" path="/accounts">
 			<http:body ><![CDATA[#[payload.accounts]]]></http:body>
+			<http:headers ><![CDATA[#[{
+	user_id: payload.user_id,
+	client_id: Mule::p("accounts.client_id"),
+	client_secret: Mule::p("accounts.client_secret")
+}]]]></http:headers>
 		</http:request>
-		<logger level="INFO" doc:name="Last log" doc:id="98d7a779-6045-4dad-b014-a24c6cad0856" />
+		<flow-ref doc:name="log-at-exit" doc:id="2420ee92-503c-49cf-ab4b-75c37f21b985" name="log-at-exit" />
 	</flow>
 </mule>
